@@ -15,27 +15,24 @@ All results are for records effective **2026-11-20** (Q4 2026). Every scan is re
 
 ## SST matching rules
 
-The SST Technology Guide (Oct 2022), chapter 5:
+The rules are quoted with page references in [sst-rules.md](sst-rules.md). In short:
+1. Standardize the address (USPS, CASS or Board-approved software).
+2. Match it to the address records.
+3. If that fails, use the standardized ZIP+4 against the ZIP+4 records.
+4. If that fails, use the ZIP5 record.
 
-- **Address first.** "Users are required to use the address data when it is provided by the state. If the query does not find the address, the user should use the 9-digit zip code (zip +4) data. If no address or 9-digit zip code record is found, the query would fall back to the 5-digit zip code."
-- **Exact match.** "Each component of the address must be an exact match to that component in the table (may exclude the zip extension from the query)."
-- **Uniqueness.** "Each row on the database must be unique for the query to return one record ... An address, 9-digit or 5-digit zip code can only be valid for one row of the database."
-- **9-digit rows.** These carry the lowest rates for that 9-digit ZIP.
+Every address field must match exactly, the suite included. The only stated exception is that the ZIP extension may be left out of the address match. The rules give no tie-break, because an address may be valid for only one row.
 
-The guide leaves two cases open:
-1. A suite that is not listed for the building.
-2. Two overlapping records, which shouldn't exist.
+`scripts/sst_lookup.py` replays each input three ways:
+- **strict, ZIP+4 left out**: permitted by the rules.
+- **strict, ZIP+4 in the match**: also permitted. It gives the same result as the first when the input has no ZIP+4.
+- **assumptions**: not in the rules. An unlisted suite is dropped and the no-suite record used; where no-suite records overlap, the single-address record wins; the ZIP+4 is left out. QuickBooks Online matched this mode on all 31 inputs.
 
-`scripts/sst_lookup.py` therefore replays each input two ways:
+In both strict modes, an unlisted suite gets no address match, and two matching records with different codes are reported as ambiguous.
 
-- **strict**: nothing added to the guide.
-  - An unlisted suite means no address match, so the lookup falls back to the ZIP+4 record, then the ZIP5 record.
-  - When two records match, the result is reported as ambiguous.
-- **assumptions**: two assumptions the guide doesn't state.
-  - An unlisted suite is dropped and the record without a suite is used.
-  - Where two no-suite records overlap, the single-address record wins.
+**Standardized inputs.** `tests/test_inputs_standardized.tsv` holds the 33 test addresses with the ZIP+4 the USPS ZIP Code lookup returned on 2026-11-20, with a note per address. `tests/test_inputs.tsv` holds them as typed into QuickBooks.
 
-  QuickBooks Online behaved like this mode on all 31 test inputs.
+**Location codes.** Boundary records are mapped to DOR location codes this way: the `L####` special-district code if present, otherwise the last four digits of the composite SER code. That is this repo's convention, not an SST requirement.
 
 ## Conflict scans (`scripts/scan_sst_conflicts.py`)
 
@@ -46,9 +43,9 @@ The guide leaves two cases open:
 | C3 | Two ZIP5 records cover the same ZIP with different codes |
 | C4 | A building whose listed suites carry a different code than a no-suite record covering its house number. The output is split afterwards (`summarize_api_checks.py`): **C4a**, no no-suite record carries the suites' code, so the result depends on the suite under any reading; **C4b**, the no-suite records overlap (a C1 situation) and the narrowest one agrees with the suites |
 | C5 | Two suite records for one building overlap with different codes |
-| C6 | A ZIP+4 with no `4` record, or whose `4` record code isn't used by any address on it, or isn't the lowest rate |
+| C6 | A ZIP+4 with no `4` record, or whose `4` record code isn't used by any address on it, or isn't the lowest rate (SSUTA §305.A.6(a); TG p. 26; WA certificate 305080) |
 | C7 | A range in DOR's address download whose code differs from the SST records with the same ZIP, ZIP+4, street and overlapping numbers |
-| C8 | Where each ZIP5 record's rate sits among the rates found in that ZIP (lowest, middle, highest) |
+| C8 | Where each ZIP5 record's rate sits among the rates found in that ZIP (lowest, middle, highest). Washington's certificate declares "Lowest rate" for ZIP5 (items 305081, 308041), although SSUTA §305.A.6(b) has allowed highest or blended since 2024 |
 
 **House numbers are candidates, not verified addresses.** Counts give the numbers that fall inside conflicting ranges. Only a geocoded address list or one live lookup per number can tell which of them actually exist.
 
@@ -62,6 +59,14 @@ The guide leaves two cases open:
 | C7 | random sample of 200 (seed 7) | first house number of the range |
 
 The DOR address-file scan (`results/2026Q4/dor_address_file_conflicts.csv`) was checked in full.
+
+## Would the ZIP+4 separate the conflicts? (`scripts/check_zip4_resolution.py`)
+
+This check matters because the rules allow the standardized ZIP+4 in the address match:
+- **C1:** do the overlapping records carry different ZIP+4s? They do in 686 of 692.
+- **C4a:** are the suite ZIP+4s missing from the no-suite records, and do their ZIP+4 records carry the suites' code? Both hold for all 101 buildings.
+
+The file doesn't contain the ZIP+4 USPS assigns to each house number, so the check can't say which record would win. Output: `results/2026Q4/zip4_resolution.md`.
 
 ## Tested in QuickBooks Online
 

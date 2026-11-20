@@ -1,29 +1,46 @@
-# QuickBooks Online: what it returned, and why
+# QuickBooks Online: what it returned, compared with the rules
 
-QuickBooks Online's Automated Sales Tax was tested on 2026-11-20 with 31 ship-to addresses. Each was typed on an unsaved test invoice; tabbing out triggers the recalculation, and the result was read from "See the math". The full table is `results/2026Q4/test_inputs_comparison.csv`, with each input next to DOR's lookup, the SST replays and DOR's sample library.
+QuickBooks Online's Automated Sales Tax was tested on 2026-11-20 with 31 ship-to addresses:
+- **How:** each address was typed on an unsaved test invoice, and the result was read from "See the math".
+- **USPS:** each input was also run through the USPS ZIP Code lookup to get the standardized form the rules call for (see [sst-rules.md](sst-rules.md)).
+- **Full table:** `results/2026Q4/test_inputs_comparison.csv` lists every input with DOR's lookup, QuickBooks, three SST replays and DOR's sample library.
 
-## Result
+## How often each method agreed (31 inputs)
 
-**On all 31 inputs, QuickBooks returned the same jurisdiction as an SST boundary-file replay that adds two assumptions** (`scripts/sst_lookup.py`, assumptions mode):
-
-1. **Unlisted suites are dropped.** If the suite isn't listed for the building, the suite is ignored and the address record with no suite is used.
-2. **Single addresses beat blocks.** Where a single-address record and a block record overlap, the single-address record wins.
-
-This doesn't show which data QuickBooks uses internally. It shows that its answers are consistent with the SST file plus those two rules.
-
-QuickBooks and DOR's lookup disagreed on 18 of the 31 inputs. In every one of those cases, the disagreement traces to the published records or to the SST hierarchy, not to a calculation error:
-
-| Inputs | QuickBooks | DOR lookup | Why |
+| Method | Same as QuickBooks | Same as DOR's lookup | Ambiguous |
 |---|---|---|---|
-| 14450 Woodinville Redmond Rd NE, no suite or an unlisted suite (T02–T05, T07–T09, T12, T13) | 4000, 8.9% | 1735, 10.4% | The SST block record 14412–14498 is 4000. No 14450 record without a suite has existed since 2025-07-01. Ste 101-A isn't listed. See [the case study](case-14450-woodinville-redmond-rd-ne.md) |
-| 14498 Woodinville Redmond Rd NE (T18) | 4000 | 1735 | Same block record; this address has no suite records in either file |
-| 1450 S Bluff Dr, Spokane Valley (T24) | 3200 Spokane County, 8.1% | 3213 Spokane Valley, 9.0% | No suites. The SST file codes 1400–1599 as 3200, while DOR's address file codes 1401–1599 odd as 3213 (a C7 row) |
-| 21806 103rd Avenue Ct E, Graham (T20, T21) | 4100, 8.2% | 2700, 9.6% | Suites 101–201 are coded 2700; the address with no suite falls in a 4100 block record (a C4a row) |
-| 4212 5th Ave NW, Olympia (T27, T28) | 3400, 8.4% | 3403, 10.0% | Units 101–104 are coded 3403; the address with no suite falls in a 3400 block record (a C4a row) |
-| Street name misspelled as "Redmond-Woodinville Rd NE" (T14–T16) | ZIP5 record: 3120 (10.5%) in 98072, 1716 in 98052 | 1735 | No address match, so the lookup drops to the ZIP5 record. DOR's lookup corrects the street name instead |
+| SST rules, ZIP+4 left out of the address match | 19 | 9 | 8 |
+| SST rules, standardized ZIP+4 in the address match | 14 | 22 | 0 |
+| SST file + two assumptions that are **not** in the rules: an unlisted suite is dropped, and a single address beats a block | **31** | 13 | 0 |
+| QuickBooks itself | – | 13 | – |
+
+QuickBooks' answers match the SST file plus those two assumptions. That shows its answers are *consistent* with them; it doesn't show what QuickBooks does internally.
+
+## Where QuickBooks departs from the rules
+
+**Ste 101-A (T07, T08) and other unlisted suites (T09, T12).**
+- USPS standardizes "Ste 101-A" to 98072-9051. USPS echoes any suite it can't confirm with the building's default ZIP+4; it did the same for "Ste 9999".
+- The SST file lists no STE 101-A, so the address match fails under either permitted reading.
+- The rules then fall back to the ZIP+4 record 98072-9051, which is 1735 Woodinville, **10.4%**.
+- QuickBooks charged **8.9%**. The only way to get that is to drop the suite and match the block record 14412–14498, and the rules don't allow that.
+
+**14450 with no suite (T02–T05, T13).** The rules allow two answers here:
+- Leaving the ZIP+4 out matches the block record: 8.9%.
+- Keeping USPS's ZIP+4 (98072-9051) skips the block record, whose ZIP+4 is 6978, and falls back to the ZIP+4 record: 10.4%.
+
+QuickBooks chose the first. The state's data is at fault for allowing two answers: TG p. 25 says records should give the same result however they are queried.
+
+## Where QuickBooks' answer matches a reading the rules allow
+
+| Inputs | QuickBooks | DOR lookup | Explanation |
+|---|---|---|---|
+| 21806 103rd Avenue Ct E (T20, T21); 4212 5th Ave NW (T27, T28) | block code (8.2%; 8.4%) | suite code (9.6%; 10.0%) | Same pattern as 14450 with no suite. Leaving the ZIP+4 out gives QuickBooks' answer; including USPS's building ZIP+4 gives DOR's |
+| 14498 Woodinville Redmond Rd NE (T18); 1450 S Bluff Dr (T24) | 4000; 3200 | 1735; 3213 | No suites. USPS returns no ZIP+4. The only matching SST record is the block record, so every reading agrees with QuickBooks; DOR's lookup follows DOR's own address file instead (a C7 row) |
+| Misspelled "Redmond-Woodinville Rd NE" (T14–T16) | ZIP5 record: 3120 (10.5%) or 1716 | 1735 | USPS can't standardize the street name, so the address and ZIP+4 lookups both fail and the rules fall back to ZIP5. DOR's lookup corrects the name instead |
+| Overlapping no-suite records (T17, T19, T22, T23, T26, T29, T30, T31) | single-address record | single-address record (8 of 8) | The rules give no tie-break (strict result: ambiguous). With USPS's ZIP+4 in the match, the block record wins in 4 of the 8, because the single-address record carries a ZIP+4 that USPS doesn't assign to that address |
 
 ## Practical notes
 
-- **Rows 2 and 3 are the counter-examples for addresses with no suite.** QuickBooks and DOR disagree there, and no suite is involved in either file: the SST file and DOR's own address file simply code the range differently. The full list of such ranges is `results/2026Q4/C7_sst_vs_dor_address_file.csv`.
-- **A suite only helps when it is a listed one.** For 14450, entering Ste 101, 108, 109, 110, 111 or 101B gives 1735. Ste 101-A (the real tenant suite in this case) gives 4000, because the suite is dropped.
-- **A misspelled street is costly.** The ZIP5 record for 98072 is 3120 (Bothell/Snohomish, 10.5%), which is the highest rate found in that ZIP.
+- **Which suites work:** for 14450, Ste 101, 108 and 109 were entered in QuickBooks and each gave 1735. By the replay, 110, 111 and 101B would too. Ste 101-A gives 8.9%.
+- **The question for a QuickBooks trace:** what QuickBooks standardized "Ste 101-A" to, and which record it then selected.
+- **A misspelled street is expensive:** it drops to the ZIP5 record. In 98072 that record is 3120 (10.5%), the highest rate in the ZIP, even though Washington's certificate says ZIP5 records carry the lowest.

@@ -14,7 +14,7 @@ DOR publishes C# source code (version 1.0.5, 2011-08-05) as "a starting point" f
 - **The Metaphone fallback matches the wrong street.**
   - "Woodinville-Redmond Rd NE" matched WOODINVILLE SNOHOMISH RD NE 17500-17598.
   - "Redmond-Woodinville Rd NE" in 98052 matched REDMOND WAY 14400-14498.
-- **The ZIP5 fallback takes the lowest rate in the ZIP** (98072 → 4200, 7.9%). The SST ZIP5 record for 98072 is L3120 (10.5%).
+- **The ZIP5 fallback takes the lowest rate in the ZIP** (98072 → 4200, 7.9%). That matches what Washington declares in its Certificate of Compliance (items 305081 and 308041: "Lowest rate"). The SST file's ZIP5 record for 98072 is L3120 (10.5%), the *highest* rate in that ZIP, so it is the SST record that departs from the declared policy, not the library.
 - **One mapping is hard-coded.** `FileRateLookup.FindRate` swaps Nooksack and Everson (3703/3706).
-- **There is no secondary (suite) support.**
+- **There is no secondary (suite) support, and no address standardization.** The SST procedure requires standardizing through USPS/CASS before matching (SSUTA §309.A.2(a)). The library relies on its own Metaphone fuzzy match instead.
 - **Result:** the library matches DOR's live lookup on 21 of 31 test inputs (`results/2026Q4/test_inputs_comparison.csv`).

@@ -1,28 +1,38 @@
 #!/usr/bin/env python3
-"""Replay a lookup against Washington's SST boundary file, following the SST Technology Guide (Oct 2022),
-chapter 5: match the address ("A") record first, leaving the ZIP extension out of the address match; if no
-address record matches, use the ZIP+4 ("4") record; if none, the ZIP5 ("Z") record.
+"""Replay a lookup against Washington's SST boundary file.
 
-Two modes, because the guide leaves two cases open:
-  strict       every address field must match, including the secondary (suite/unit). A suite that is not
-               listed means no address match. If two records match, the result is reported as ambiguous.
-  assumptions  the same, plus two assumptions the guide does not state:
-               (1) a suite that is not listed is dropped and the record without a suite is used;
-               (2) where two records without a suite overlap, the single-address record wins.
-               In our tests QuickBooks Online behaved like this mode on all 31 inputs.
+The procedure (SSUTA s309.A.2 as amended through 2024-12-20; SST Technology Guide, Oct 2022, ch. 5):
+standardize the address (USPS, CASS or Board-approved software), match it to the address ("A") records;
+if no address record matches, use the standardized ZIP+4 against the ZIP+4 ("4") records; if none, the
+ZIP5 ("Z") record. Every address field must match exactly, secondary (suite/unit) fields included; the
+guide allows the ZIP extension to be left out of the address match. See docs/sst-rules.md.
 
-Input: a TSV of standardized addresses with header
+Three modes:
+  strict_no_plus4    rule-compliant; the ZIP+4 is left out of the address match (permitted).
+  strict_with_plus4  rule-compliant; the standardized ZIP+4 is part of the address match (also permitted).
+                     Identical to strict_no_plus4 when the input has no ZIP+4.
+  In both strict modes a supplied suite must match a listed suite, and two matching records with different
+  codes are reported as ambiguous (the guide says an address can only be valid for one row).
+  assumptions        NOT in the rules: a suite that is not listed is dropped and the record without a suite
+                     is used; where records without a suite overlap, the single-address record wins; the
+                     ZIP+4 is left out of the address match. QuickBooks Online matched this mode on all 31
+                     inputs we entered.
+
+Input: a TSV of standardized addresses with header (extra columns are ignored)
   id  house  predir  name  suffix  postdir  sec_abbr  sec_value  zip5  plus4  label
 Usage:
-  python3 sst_lookup.py --sst WAB2026Q4AUG27.csv --date 20261120 --inputs tests/test_inputs.tsv --out results.csv
+  python3 sst_lookup.py --sst WAB2026Q4AUG27.csv --date 20261120 --inputs tests/test_inputs_standardized.tsv --out out.csv
 """
 import argparse, csv
+
 
 def loc_code(r):
     return r[30][1:] if len(r) > 30 and r[30].startswith('L') else (r[21][-4:] if r[21] else '')
 
+
 def par_ok(oe, n):
     return oe in ('', 'B') or (oe == 'O' and n % 2 == 1) or (oe == 'E' and n % 2 == 0)
+
 
 def sec_in(r, val):
     lo, hi, oe = r[11], r[12], r[13]
@@ -32,6 +42,14 @@ def sec_in(r, val):
         return lo <= val <= hi
     return val in (lo, hi)
 
+
+def fmt(level, codes):
+    codes = sorted(codes)
+    if len(codes) == 1:
+        return level, codes[0]
+    return level, 'ambiguous ' + ' / '.join(codes)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sst', required=True); ap.add_argument('--date', required=True)
@@ -40,10 +58,11 @@ def main():
     tests = list(csv.DictReader(open(a.inputs, newline=''), delimiter='\t'))
     zips = {t['zip5'] for t in tests}
     A, F, Z = [], [], []
-    with open(a.sst, newline='') as f:
+    with open(a.sst, newline='', encoding='latin-1') as f:
         for i, r in enumerate(csv.reader(f), start=1):
             if not r or not (r[1] <= a.date <= r[2]):
                 continue
+            r += [''] * (31 - len(r))
             if r[0] == 'A' and r[15] in zips:
                 A.append((i, r))
             elif r[0] in ('4', 'Z') and any(r[17] <= z <= (r[19] or r[17]) for z in zips):
@@ -56,38 +75,41 @@ def main():
                 return '4', hit
         return 'Z', [(i, r) for i, r in Z if r[17] <= zip5 <= (r[19] or r[17])]
 
+    def strict(base, sec, zip5, plus4):
+        exact = [(i, r) for i, r in base if (r[10] == sec[0] and sec_in(r, sec[1]))] if sec else \
+                [(i, r) for i, r in base if not r[10]]
+        if exact:
+            return fmt('A', {loc_code(r) for i, r in exact})
+        lvl, hit = fallback(zip5, plus4)
+        return fmt(lvl, {loc_code(r) for i, r in hit})
+
     with open(a.out, 'w', newline='') as f:
         w = csv.writer(f)
-        w.writerow(['id', 'label', 'strict_level', 'strict_codes', 'assumptions_level', 'assumptions_code', 'matching_address_records'])
+        w.writerow(['id', 'label', 'plus4_used',
+                    'strict_no_plus4_level', 'strict_no_plus4_code',
+                    'strict_with_plus4_level', 'strict_with_plus4_code',
+                    'assumptions_level', 'assumptions_code', 'matching_address_records'])
         for t in tests:
             n = int(t['house'])
             base = [(i, r) for i, r in A if r[15] == t['zip5'] and (r[6], r[7], r[8], r[9]) == (t['predir'], t['name'], t['suffix'], t['postdir'])
                     and r[3].isdigit() and r[4].isdigit() and int(r[3]) <= n <= int(r[4]) and par_ok(r[5], n)]
             desc = ' | '.join(f"L{i}: {r[3]}-{r[4]} {r[5] or 'B'} {r[10]} {r[11]}-{r[12]} +{r[16]} -> {loc_code(r)}".replace('  ', ' ') for i, r in base)
             sec = (t['sec_abbr'], t['sec_value']) if t['sec_abbr'] else None
-            if sec:
-                exact = [(i, r) for i, r in base if r[10] == sec[0] and sec_in(r, sec[1])]
-            else:
-                exact = [(i, r) for i, r in base if not r[10]]
-            nosuite = [(i, r) for i, r in base if not r[10]]
-            # strict
-            if exact:
-                s_level, s_codes = 'A', sorted({loc_code(r) for i, r in exact})
-            else:
-                lvl, hit = fallback(t['zip5'], t['plus4'])
-                s_level, s_codes = lvl, sorted({loc_code(r) for i, r in hit})
-            # assumptions
-            pick = exact or nosuite
+            p4 = t['plus4']
+            s1 = strict(base, sec, t['zip5'], p4)
+            s2 = strict([(i, r) for i, r in base if r[16] == p4] if p4 else base, sec, t['zip5'], p4)
+            # assumptions (not in the rules)
+            exact = [(i, r) for i, r in base if r[10] == sec[0] and sec_in(r, sec[1])] if sec else [(i, r) for i, r in base if not r[10]]
+            pick = exact or [(i, r) for i, r in base if not r[10]]
             if pick:
                 if len({loc_code(r) for i, r in pick}) > 1:
-                    singles = [(i, r) for i, r in pick if r[3] == r[4]]
-                    pick = singles or pick
-                a_level, a_code = 'A', '/'.join(sorted({loc_code(r) for i, r in pick}))
+                    pick = [(i, r) for i, r in pick if r[3] == r[4]] or pick
+                s3 = ('A', '/'.join(sorted({loc_code(r) for i, r in pick})))
             else:
-                lvl, hit = fallback(t['zip5'], t['plus4'])
-                a_level, a_code = lvl, '/'.join(sorted({loc_code(r) for i, r in hit}))
-            w.writerow([t['id'], t['label'], s_level, ' / '.join(s_codes) if len(s_codes) == 1 else 'ambiguous ' + ' / '.join(s_codes),
-                        a_level, a_code, desc])
+                lvl, hit = fallback(t['zip5'], p4)
+                s3 = (lvl, '/'.join(sorted({loc_code(r) for i, r in hit})))
+            w.writerow([t['id'], t['label'], p4, *s1, *s2, *s3, desc])
+
 
 if __name__ == '__main__':
     main()

@@ -1,6 +1,8 @@
 # Case study: 3058 Camp 2 Rd, Sedro-Woolley 98284-9508
 
-A reproducible defect in the SST boundary file. One address has two records on the same ZIP+4, in two different counties, and the ZIP+4 itself appears twice.
+This is the clearest rule violation in the file. One address has two records on the same ZIP+4, in two different counties, and the ZIP+4 itself appears in two ZIP+4 records.
+
+The Technology Guide (p. 26) is explicit: "A 9-digit zip code may not be in more than one '4' record." The only exception is the same row repeated across effective dates. USPS standardizes the address to 98284-9508 (lookup on 2026-11-20).
 
 | SST line | Type | Range / ZIP+4 | Code | County FIPS | Effective |
 |---|---|---|---|---|---|
@@ -13,6 +15,6 @@ A reproducible defect in the SST boundary file. One address has two records on t
   - DOR's live lookup returns 3737 (ResultCode 2) for "3058 Camp 2 Rd, 98284" but 2929 (ResultCode 1) for 98284-9508 on its own.
   - DOR's address download (`State_26Q4.txt`) codes both 3000-3058 and 3058 as 3737.
 - **Not a one-off:** duplicate ZIP+4 pairs for 98284-9508 appear in most quarters back to 2022.
-- **No input can resolve it:** both address records and both ZIP+4 records share the same ZIP+4, so no suite and no ZIP+4 settles which one applies.
+- **No input can resolve it:** both address records and both ZIP+4 records share the same ZIP+4. No suite and no ZIP+4 settles which one applies, and every reading that follows the rules returns two answers.
 
 All rows: `results/2026Q4/case_3058_camp_2_rd_sst_rows.csv`. The same pattern exists for 14 other ZIP+4s: `results/2026Q4/C2_zip4_duplicates.csv`.
