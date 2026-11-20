@@ -1,0 +1,32 @@
+test,ship_to,state_agency,state_percent,local_agency,local_percent,combined_percent,tax_on_100_USD
+T01,"19510 144th Ave NE, Woodinville 98072",Washington State,6.50,Woodinville City,3.90,10.40,10.40
+T02,"14450 Woodinville Redmond Rd NE, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T03,"14450 Woodinville Redmond Rd NE, Woodinville 98072-9051",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T04,"14450 Woodinville Redmond Rd NE, Woodinville 98072-4547",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T05,"14450 Woodinville Redmond Rd NE, Woodinville 98072-6978",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T06,"14450 Woodinville Redmond Rd NE Ste 101, Woodinville 98072",Washington State,6.50,Woodinville City,3.90,10.40,10.40
+T07,"14450 Woodinville Redmond Rd NE Ste 101-A, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T08,"14450 Woodinville Redmond Rd NE Ste 101A, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T09,"14450 Woodinville Redmond Rd NE Ste 105, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T10,"14450 Woodinville Redmond Rd NE Ste 108, Woodinville 98072",Washington State,6.50,Woodinville City,3.90,10.40,10.40
+T11,"14450 Woodinville Redmond Rd NE Ste 109, Woodinville 98072",Washington State,6.50,Woodinville City,3.90,10.40,10.40
+T12,"14450 Woodinville Redmond Rd NE Ste 9999, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T13,"14450 Woodinville-Redmond Rd NE, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T14,"14450 Redmond-Woodinville Rd NE, Woodinville 98072",Washington State,6.50,Bothell In Snohomish County District,4.00,10.50,10.50
+T15,"14450 Redmond Woodinville Rd NE, Woodinville 98072",Washington State,6.50,Bothell In Snohomish County District,4.00,10.50,10.50
+T16,"14450 Redmond-Woodinville Rd NE, Redmond 98052",Washington State,6.50,Kirkland District,3.90,10.40,10.40
+T17,"14111 NE 145th St, Woodinville 98072",Washington State,6.50,Woodinville City,3.90,10.40,10.40
+T18,"14498 Woodinville Redmond Rd NE, Woodinville 98072",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T19,"18030 162nd Pl SE, Renton 98058",Washington State,6.50,King County Uninc Non-Rta District,2.40,8.90,8.90
+T20,"21806 103rd Avenue Ct E, Graham 98338",Washington State,6.50,Pierce County Uninc Areas Non-Rta District,1.70,8.20,8.20
+T21,"21806 103rd Avenue Ct E, Graham 98338-8115",Washington State,6.50,Pierce County Uninc Areas Non-Rta District,1.70,8.20,8.20
+T22,"4203 237th Pl SE, Bothell 98021",Washington State,6.50,Bothell In Snohomish County District,4.00,10.50,10.50
+T23,"1414 S Bluff Dr, Spokane Valley 99206",Washington State,6.50,Spokane Valley City,2.50,9.00,9.00
+T24,"1450 S Bluff Dr, Spokane Valley 99206",Washington State,6.50,Spokane County,1.60,8.10,8.10
+T25,"12529 44th St NE, Lake Stevens 98258",Washington State,6.50,Snohomish County Uninc Areas Non-Rta District,1.40,7.90,7.90
+T26,"24414 131st Ave NE, Arlington 98223",Washington State,6.50,Snohomish County Uninc Areas Non-Rta District,1.40,7.90,7.90
+T27,"4212 5th Ave NW, Olympia 98502",Washington State,6.50,Thurston County,1.90,8.40,8.40
+T28,"4212 5th Ave NW, Olympia 98502-1775",Washington State,6.50,Thurston County,1.90,8.40,8.40
+T29,"4220 5th Ave NW, Olympia 98502",Washington State,6.50,Olympia City,3.50,10.00,10.00
+T30,"9443 Delridge Way SW, Seattle 98106",Washington State,6.50,Seattle City,4.05,10.55,10.55
+T31,"415 E Burke Ave, Arlington 98223",Washington State,6.50,Arlington City,2.80,9.30,9.30

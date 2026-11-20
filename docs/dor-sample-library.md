@@ -1,20 +1,10 @@
-# Review: DOR's sample library (WaRateFileLookup 1.0.5)
+# DOR sample library, WaRateFileLookup 1.0.5
 
-DOR publishes C# source code (version 1.0.5, 2011-08-05) as "a starting point" for lookups against its download files. We compiled it unmodified on Mono 6.8, leaving out `FileMaintenance.cs` and `UnitTest/`, and ran it with `RateLookupEngine.STANDARDIZER` against the Q4 2026 files. See `scripts/wsrl/`.
+DOR publishes source for a local lookup using its address, ZIP+4 and rates downloads. During verification the WaRateFiles source was compiled with the Windows .NET Framework C# compiler, omitting unit tests and FileMaintenance.cs as in the supplied Mono build script. The driver loaded Q4 2026. The FULL results reproduced the recorded location code, rate and matched-row description on all 31 inputs. Those codes matched AddressRates on 21 and the QuickBooks crosswalk on 10. [Official source archive](https://dor.wa.gov/sites/default/files/2022-06/WaRateFileLookup-1.0.5.zip) · [Driver](../scripts/wsrl/Driver.cs)
 
-## Findings
-
-- **The ZIP+4 is never used to match an address.** `AddressNormalIndex.Locate` uses the ZIP only to choose the `ZipStreet`. The plus4 never reaches `StreetName.Locate`, so a known ZIP+4 can't break a tie between rows.
-- **Ties resolve by file order.**
-  - `StreetComponent.Match` gives no credit for a house number being inside a range. Outside a range it subtracts 0.1 plus a small distance term.
-  - It has no preference for a narrower range.
-  - `StreetName.Locate` keeps the first highest score (strict `>`), so overlapping rows resolve by file order.
-  - `State_26Q4.txt` is sorted by ZIP, then PLUS4. The answer therefore depends on how ZIP+4s happen to be numbered: 14450 gets +4547 first (1735), but 18030 162nd Pl SE gets +9180 first (1700).
-- **The odd/even check is one-sided.** An odd number on an even-side row gets −0.0001; an even number on an odd-side row gets nothing.
-- **The Metaphone fallback matches the wrong street.**
-  - "Woodinville-Redmond Rd NE" matched WOODINVILLE SNOHOMISH RD NE 17500-17598.
-  - "Redmond-Woodinville Rd NE" in 98052 matched REDMOND WAY 14400-14498.
-- **The ZIP5 fallback takes the lowest rate in the ZIP** (98072 → 4200, 7.9%). That matches what Washington declares in its Certificate of Compliance (items 305081 and 308041: "Lowest rate"). The SST file's ZIP5 record for 98072 is L3120 (10.5%), the *highest* rate in that ZIP, so it is the SST record that departs from the declared policy, not the library.
-- **One mapping is hard-coded.** `FileRateLookup.FindRate` swaps Nooksack and Everson (3703/3706).
-- **There is no secondary (suite) support, and no address standardization.** The SST procedure requires standardizing through USPS/CASS before matching (SSUTA §309.A.2(a)). The library relies on its own Metaphone fuzzy match instead.
-- **Result:** the library matches DOR's live lookup on 21 of 31 test inputs (`results/2026Q4/test_inputs_comparison.csv`).
+* In the STANDARDIZER address engine, ZIP5 selects the street index. The ZIP extension does not break ties between street rows. FileRateLookup separately attempts a ZIP+4 lookup after the address stage fails.
+* StreetComponent.Match scores street tokens and penalizes a house number outside the interval by 0.1 plus a distance term. It does not reward the narrower of two enclosing ranges. The parity penalty of 0.0001 applies to an odd number on an even row. There is no corresponding penalty for an even number on an odd row.
+* In full mode StreetName.Locate retains the first strictly highest score. Equal-score rows consequently depend on file order. The optional shortcut can return a representative address instead. At 14450 the full match picked +4547, while at 18030 162nd Pl SE it picked the broader +9180 row.
+* The engine tokenizes and normalizes address text and uses phonetic matching. It does not perform the USPS/CASS lookup modeled here. There is no secondary column in the DOR street input for selecting a tax row by suite. T13 matched WOODINVILLE SNOHOMISH RD NE, 17500–17598. T16 matched REDMOND WAY, 14400–14498.
+* ZipPlus4MemoryIndex chooses the lowest combined rate among the downloaded rows for a ZIP5 fallback. In 98072 it yields 4200 at 7.9%. The SST Z row gives 10.5% from its own jurisdiction components. In FileRateLookup.FindRate the address path conditionally changes location code 3703 to 3706 for Nooksack and vice versa for Everson.
+* The library selects the current calendar quarter. Reproduction outside Q4 2026 requires an isolated compatible date or an explicitly documented test-harness change. These are findings about the archived sample code and supplied inputs. DOR's live service runs separately.

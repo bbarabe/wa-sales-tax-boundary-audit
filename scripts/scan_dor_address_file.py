@@ -11,8 +11,7 @@ conflicting rows. 'pattern' is:
   overlapping block rows                only range rows overlap
   same ZIP+4, different codes           two rows share a ZIP+4 yet carry different codes
 
-The address file has no suite/unit field, so suite-level records published elsewhere (the SST boundary
-file) show up here as duplicate single-address rows.
+The address file has no suite/unit field. The scan does not establish the origin of overlapping rows.
 """
 import argparse, collections, csv
 

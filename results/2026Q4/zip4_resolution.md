@@ -4,10 +4,10 @@
 
 | | rows | rate-changing |
 |---|---|---|
-| each record has its own ZIP+4 | 686 | 519 |
-| two records share a ZIP+4 | 6 | 1 |
+| conflicting codes have disjoint extensions | 686 | 519 |
+| different codes share an extension | 6 | 1 |
 
-Where each record has its own ZIP+4, including the standardized ZIP+4 picks the record that carries it. Which one that is depends on the ZIP+4 USPS assigns, which the file does not contain.
+A matching extension distinguishes the codes in the disjoint group. A different extension can miss every overlapping row. The chosen postal candidate matters.
 
 ## C4a buildings whose suites are coded differently from every no-suite record
 
@@ -15,4 +15,4 @@ Where each record has its own ZIP+4, including the standardized ZIP+4 picks the 
 |---|---|---|
 | suite ZIP+4 records carry the suites' code | 101 | 75 |
 
-For these buildings the two permitted ways of querying disagree: leaving the ZIP+4 out matches the block record; including a suite ZIP+4 (USPS gives the building default, which was a suite ZIP+4 at 14450, 21806 and 4212) falls through to a ZIP+4 record with the suites' code.
+For a no-suite query that uses one of the listed suite ZIP+4s, including that extension can change the result from a covering street row to the ZIP+4 fallback. The scan does not determine which extension a postal standardizer would select for each building.

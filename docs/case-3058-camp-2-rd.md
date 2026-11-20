@@ -1,20 +1,14 @@
-# Case study: 3058 Camp 2 Rd, Sedro-Woolley 98284-9508
+# 3058 Camp 2 Rd, Sedro-Woolley, WA 98284-9508
 
-This is the clearest rule violation in the file. One address has two records on the same ZIP+4, in two different counties, and the ZIP+4 itself appears in two ZIP+4 records.
+USPS returned 98284-9508 for the street address. The Washington Q4 SST boundary file contains four relevant rows active on November 20, 2026.
 
-The Technology Guide (p. 26) is explicit: "A 9-digit zip code may not be in more than one '4' record." The only exception is the same row repeated across effective dates. USPS standardizes the address to 98284-9508 (lookup on 2026-11-20).
+| SST line | Type | Covered input | County FIPS | Mapped code | SST general rate |
+|---:|---|---|---|---:|---:|
+| 1546893 | A | 3000–3058, both sides, +9508 | 057 (Skagit) | 2929 | 8.7% |
+| 1547127 | A | 3058 only, both sides, +9508 | 073 (Whatcom) | 3737 | 8.9% |
+| 307014 | 4 | 98284-9508 | 057 | 2929 | 8.7% |
+| 307015 | 4 | 98284-9508 | 073 | 3737 | 8.9% |
 
-| SST line | Type | Range / ZIP+4 | Code | County FIPS | Effective |
-|---|---|---|---|---|---|
-| 1546893 | A | 3000-3058 B, 98284-9508 | L2929 Skagit PTBA, 8.7% | 057 | 2024-01-01 on |
-| 1547127 | A | 3058-3058 B, 98284-9508 | L3737 Whatcom PTBA, 8.9% | 073 | 2021-01-01 on |
-| 307014 | 4 | 98284-9508 | L2929 | 057 | 2026-10-01 on |
-| 307015 | 4 | 98284-9508 | L3737 | 073 | 2026-10-01 on |
+Both street records match 3058 even with +9508 included. Both ZIP+4 rows also match the same nine digits on the same day. The Guide calls for one valid ZIP+4 row. The Q4 file's effective-date history shows both assignments at 11 of 20 quarter starts from 2022 Q1 through 2026 Q4. That is a reading of one release's history, rather than a comparison of 20 archived publications. [Extract with source line numbers](../results/2026Q4/case_3058_camp_2_rd_sst_rows.csv) · [Technology Guide, p. 26](https://www.streamlinedsalestax.org/docs/default-source/technology/technology-guide-october-2022.pdf)
 
-- **Other sources disagree too:**
-  - DOR's live lookup returns 3737 (ResultCode 2) for "3058 Camp 2 Rd, 98284" but 2929 (ResultCode 1) for 98284-9508 on its own.
-  - DOR's address download (`State_26Q4.txt`) codes both 3000-3058 and 3058 as 3737.
-- **Not a one-off:** duplicate ZIP+4 pairs for 98284-9508 appear in most quarters back to 2022.
-- **No input can resolve it:** both address records and both ZIP+4 records share the same ZIP+4. No suite and no ZIP+4 settles which one applies, and every reading that follows the rules returns two answers.
-
-All rows: `results/2026Q4/case_3058_camp_2_rd_sst_rows.csv`. The same pattern exists for 14 other ZIP+4s: `results/2026Q4/C2_zip4_duplicates.csv`.
+DOR's address file lines 471001–471002 assign 3737 to the even range 3000–3058 and the single number 3058. Its short and long ZIP+4 downloads assign 2929 to +9508. AddressRates returned 3737 for the street (result 2, updated and found) and 2929 for the ZIP+4 alone (result 1, ZIP+4 located). A geographic ZIP fallback can legitimately differ from the street lookup. The defect here is the simultaneous pair *within* each SST level. A physical site or parcel determination for 3058 remains with DOR. [DOR downloads](https://dor.wa.gov/taxes-rates/sales-use-tax-rates/downloadable-database) · [DOR result codes](https://dor.wa.gov/wa-sales-tax-rate-lookup-url-interface)

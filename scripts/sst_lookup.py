@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """Replay a lookup against Washington's SST boundary file.
 
-The procedure (SSUTA s309.A.2 as amended through 2024-12-20; SST Technology Guide, Oct 2022, ch. 5):
+The model (SSUTA sections 305 and 309, May 2026; SST Technology Guide, Oct 2022, ch. 5):
 standardize the address (USPS, CASS or Board-approved software), match it to the address ("A") records;
 if no address record matches, use the standardized ZIP+4 against the ZIP+4 ("4") records; if none, the
 ZIP5 ("Z") record. Every address field must match exactly, secondary (suite/unit) fields included; the
 guide allows the ZIP extension to be left out of the address match. See docs/sst-rules.md.
 
 Three modes:
-  strict_no_plus4    rule-compliant; the ZIP+4 is left out of the address match (permitted).
-  strict_with_plus4  rule-compliant; the standardized ZIP+4 is part of the address match (also permitted).
+  strict_no_plus4    omit the ZIP extension when matching A rows.
+  strict_with_plus4  retain the supplied candidate ZIP extension when matching A rows.
                      Identical to strict_no_plus4 when the input has no ZIP+4.
   In both strict modes a supplied suite must match a listed suite, and two matching records with different
   codes are reported as ambiguous (the guide says an address can only be valid for one row).
@@ -45,6 +45,8 @@ def sec_in(r, val):
 
 def fmt(level, codes):
     codes = sorted(codes)
+    if not codes:
+        return level, 'no match'
     if len(codes) == 1:
         return level, codes[0]
     return level, 'ambiguous ' + ' / '.join(codes)
@@ -92,6 +94,7 @@ def main():
         for t in tests:
             n = int(t['house'])
             base = [(i, r) for i, r in A if r[15] == t['zip5'] and (r[6], r[7], r[8], r[9]) == (t['predir'], t['name'], t['suffix'], t['postdir'])
+                    and (not t.get('city') or r[14] == t['city'])
                     and r[3].isdigit() and r[4].isdigit() and int(r[3]) <= n <= int(r[4]) and par_ok(r[5], n)]
             desc = ' | '.join(f"L{i}: {r[3]}-{r[4]} {r[5] or 'B'} {r[10]} {r[11]}-{r[12]} +{r[16]} -> {loc_code(r)}".replace('  ', ' ') for i, r in base)
             sec = (t['sec_abbr'], t['sec_value']) if t['sec_abbr'] else None

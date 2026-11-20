@@ -44,7 +44,7 @@ def tally(rows, classify):
 
 def main():
     d = sys.argv[1]
-    parts = ['# DOR AddressRates vs. the conflicting records', '']
+    parts = ['# Original DOR AddressRates observations', '']
 
     rows = load(d, 'C1_api.csv')
     if rows:

@@ -2,9 +2,8 @@
 """Scan Washington's Streamlined Sales Tax (SST) boundary file for records that conflict.
 
 The SST Technology Guide (Oct 2022), chapter 5, says: "Each row on the database must be unique for the
-query to return one record ... An address, 9-digit or 5-digit zip code can only be valid for one row of
-the database." This script lists every place where that does not hold for the records effective on a
-given date, plus a few related consistency checks.
+query to return one record". This script screens Washington's published location-code assignments
+on the requested effective date. The code crosswalk is not itself an SST rate calculation.
 
 Usage:
   python3 scan_sst_conflicts.py --sst WAB2026Q4AUG27.csv --rates Rates_26Q4.csv \
@@ -12,12 +11,12 @@ Usage:
 
 Categories (one CSV each, all with 1-based line numbers into the SST file):
   C1_address_overlaps_no_suite      two address ("A") records without a secondary (suite/unit) cover the
-                                    same house number (same ZIP, street, odd/even side) with different codes
+                                    same house number (same city, ZIP, street, odd/even side) with different codes
   C2_zip4_duplicates                two ZIP+4 ("4") records cover the same ZIP+4 with different codes
   C3_zip5_duplicates                two ZIP5 ("Z") records cover the same ZIP with different codes
   C4_suite_vs_no_suite              a building whose listed suites carry a different code than the
-                                    no-suite record covering the same house number (a missing or unlisted
-                                    suite gets a different jurisdiction than the listed ones)
+                                    no-suite record covering the same house number. The outcome for an
+                                    input depends on its postal candidate and matching procedure.
   C5_suite_overlaps                 two suite records for the same building overlap (same unit designator,
                                     overlapping unit range) with different codes
   C6_zip4_vs_addresses              a ZIP+4 whose "4" record is missing, or whose code is not among the
@@ -47,6 +46,13 @@ def street_str(k):
 
 def par_ok(oe, n):
     return oe in ('', 'B') or (oe == 'O' and n % 2 == 1) or (oe == 'E' and n % 2 == 0)
+
+
+def shares_number(lo, hi, side, row):
+    first = max(lo, int(row[3]))
+    last = min(hi, int(row[4]))
+    return any(first + offset <= last and par_ok(side, first + offset)
+               and par_ok(row[5], first + offset) for offset in (0, 1))
 
 def overlap_segments(rows, key_parity):
     """rows: list of (lo, hi, oe, payload). Yields (first, last, count, active_rows) for maximal segments of
@@ -132,7 +138,7 @@ def main():
         r = rec['r']
         if not (r[3].isdigit() and r[4].isdigit()):
             continue
-        key = (r[15],) + street_key(r)
+        key = (r[15], r[14]) + street_key(r)
         (suites if r[10] else nosuite)[key].append((int(r[3]), int(r[4]), r[5], rec))
 
     # C1
@@ -144,7 +150,7 @@ def main():
             for first, last, n, act in overlap_segments(rows, par):
                 recs = [x[3] for x in act]
                 rs = rates_of(recs)
-                c1.append([key[0], street_str(key[1:]), 'even' if par == 0 else 'odd', first, last, n,
+                c1.append([key[0], street_str(key[2:]), 'even' if par == 0 else 'odd', first, last, n,
                            len(rs) > 1, ' | '.join(sorted({x['code'] for x in recs})), ' | '.join(desc(x) for x in recs)])
     write('C1_address_overlaps_no_suite',
           ['zip', 'street', 'side', 'house_from', 'house_to', 'house_number_candidates', 'rate_differs', 'codes', 'records'], c1, '', '')
@@ -201,7 +207,7 @@ def main():
             ncodes = {x['code'] for x in cover}
             if cover and (ncodes - scodes or scodes - ncodes):
                 rs = rates_of(recs + cover)
-                c4.append([key[0], street_str(key[1:]), f'{lo}-{hi}' if lo != hi else str(lo),
+                c4.append([key[0], street_str(key[2:]), f'{lo}-{hi}' if lo != hi else str(lo),
                            ' | '.join(sorted(scodes)), ' | '.join(sorted(ncodes)), len(rs) > 1, len(recs),
                            ' | '.join(desc(x) for x in recs), ' | '.join(desc(x) for x in cover)])
             # C5: overlapping suite ranges with different codes
@@ -213,7 +219,7 @@ def main():
                     for j in range(i + 1, len(xs)):
                         p, q = xs[i], xs[j]
                         if p['code'] != q['code'] and sec_overlap(sec_range(p['r']), sec_range(q['r'])):
-                            c5.append([key[0], street_str(key[1:]), f'{lo}-{hi}' if lo != hi else str(lo), abbr,
+                            c5.append([key[0], street_str(key[2:]), f'{lo}-{hi}' if lo != hi else str(lo), abbr,
                                        len(rates_of([p, q])) > 1, f"{p['code']} | {q['code']}", f"{desc(p)} | {desc(q)}"])
     write('C4_suite_vs_no_suite', ['zip', 'street', 'house', 'listed_suite_codes', 'no_suite_codes', 'rate_differs',
                                    'suite_records', 'suite_records_detail', 'no_suite_records_detail'], c4, '', '')
@@ -264,7 +270,7 @@ def main():
             for i, x in enumerate(csv.DictReader(f), start=2):
                 lo, hi = int(x['ADDR_LOW']), int(x['ADDR_HIGH'])
                 cands = [rec for rec in sst_idx.get((x['ZIP'], x['PLUS4'], x['STREET']), [])
-                         if int(rec['r'][3]) <= hi and lo <= int(rec['r'][4])]
+                         if shares_number(lo, hi, x['ODD_EVEN'], rec['r'])]
                 if not cands:
                     missing += 1
                     continue

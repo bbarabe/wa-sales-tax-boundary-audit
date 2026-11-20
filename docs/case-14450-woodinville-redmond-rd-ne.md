@@ -1,69 +1,38 @@
-# Case study: 14450 Woodinville-Redmond Rd NE, Woodinville 98072
+# 14450 Woodinville Redmond Rd NE, Woodinville
 
-This is a multi-tenant winery building in Woodinville's Hollywood district, and the case that started this work.
+**Three independent observations matter for this venue.** DOR's street lookup returned 1735 Woodinville, 10.4%. The King County building point lies inside DOR's Q4 polygon for 1735. QuickBooks displayed 8.9% for the ship-to string containing STE 101-A, and 10.4% for STE 101. The venue publishes the reverse street-name order, “Redmond-Woodinville,” without a unit. STE 101-A is the unit reported by the business. [Venue listing](https://evergreenfamilywines.com/tasting-rooms/) · [QuickBooks test results](quickbooks-online-tests.md)
 
-## The three answers
+## Physical location
 
-- **DOR's Tax Rate Lookup:** 1735 Woodinville, 10.4%.
-- **QuickBooks Online:** 4000 King County unincorporated, 8.9%, both for the address with no suite and for the tenant's actual suite, "Ste 101-A". For Ste 101-A, that is not what the rules give (see below).
-- **QuickBooks support:** said Washington's records for the building are tied to individual suites, and that adding a suite fixes it.
+King County's address layer returned a single building point for 14450 WOODINVILLE REDMOND RD NE, site ID `{061D163D-D103-47A9-B78B-BCAE9F444D02}`, latitude 47.73229011, longitude -122.14063994. The county gives city Woodinville, ZIP 98072, extension 4547 and a blank unit. Requesting the point in the Q4 shapefile's native projection gives (1236641.89195337, 879095.59835768) US survey feet. The point is inside exactly one location-code polygon, 1735, about 61 feet from its boundary. This supports 1735 at the county's building point. It does not locate the tenant's floor space or establish relief on a return. [County address layer](https://gismaps.kingcounty.gov/arcgis/rest/services/Address/KingCo_AddressPoints/MapServer/0) · [DOR Q4 polygons](https://dor.wa.gov/sites/default/files/2026-08/LOCCODE_PUBLIC_26Q4.zip)
 
-## SST boundary file records (effective 2026-11-20)
+## Active SST street rows
 
-| House range | Side | Secondary | ZIP+4 | Code | Effective |
-|---|---|---|---|---|---|
-| 14450-14450 | E | STE 108-111 (B) | 98072-4547 | 01735 | since 2021-01-01 |
-| 14450-14450 | E | STE 101B | 98072-7100 | 01735 | since 2025-01-01 |
-| 14450-14450 | E | STE 101 | 98072-9051 | 01735 | since 2025-07-01 |
-| **14412-14498** | E | (none) | 98072-6978 | **L4000** | since 2026-04-01 |
+| Street numbers (even) | Secondary | ZIP extension | Mapped code | Effective from |
+|---|---|---:|---:|---|
+| 14450 | STE 108–111 | 4547 | 1735 | Jan 1, 2021 |
+| 14450 | STE 101B | 7100 | 1735 | Jan 1, 2025 |
+| 14450 | STE 101 | 9051 | 1735 | July 1, 2025 |
+| 14412–14498 | blank | 6978 | 4000 | April 1, 2026 |
 
-- **ZIP+4 records:** 98072-9051 → 01735 (since 2016-10-01); 98072-6978 → L4000 (since 2026-04-01).
-- **The block record has changed code three times:** 1735 (2021-01-01 to 2022-03-31), 4000 (2022-04-01 to 2023-12-31), 1735 (2024-01-01 to 2026-03-31), 4000 (2026-04-01 on).
-- **The no-suite 14450 record was dropped:** until 2025-06-30 there was a 14450 record without a secondary on 98072-9051, coded 1735. From 2025-07-01 that ZIP+4 carries STE 101 only.
+The effective-dated even block in this release changed code three times since 2021: 1735, 4000 from April 2022, 1735 from January 2024, and 4000 from April 2026. The single-number blank-suite row on +9051 ended June 30, 2025. These are dates on source records. They establish no historical QuickBooks behavior. The active SST and DOR ZIP+4 downloads agree on these assignments: +4547, +7100 and +9051 map to 1735, while +6978 maps to 4000. [Source rows and dates](../results/2026Q4/case_14450_sst_rows.csv)
 
-**When the 8.9% started.** Take the reading where the ZIP+4 is left out of the match and the single-address record wins over the block record. Under it, 14450 with no suite came out 1735 every quarter until 2026-03-31:
-- From 2022-04 to 2023-12 the block was already 4000, but the no-suite 14450 record still existed and won.
-- The 8.9% starts on **2026-04-01**. By then the no-suite 14450 record was gone (since 2025-07-01) and the block switched to 4000 again.
+## What USPS actually returned
 
-All rows are in `results/2026Q4/case_14450_sst_rows.csv` (raw SST rows, line numbers included). They were extracted with `scripts/extract_sst_rows.py`.
-
-## What USPS has for the building
-
-These are USPS ZIP Code lookup results from 2026-11-20. USPS standardization is the first step the rules require (SSUTA §309.A.2(a)).
-
-| USPS record | ZIP+4 | In the SST file? |
+| Input on the USPS public form | Visible result | Interpretation used here |
 |---|---|---|
-| 14450, no suite (building default) | 98072-9051 | No. A no-suite record existed until 2025-06-30 |
-| STE 101 | 98072-9051 | Yes, 1735 |
-| STE 102–107 | 98072-9051 | **No** |
-| STE 101B | 98072-7100 | Yes, 1735 |
-| STE 108–111 | 98072-4547 | Yes, 1735 |
-| Street range 14412–14498 even (street default) | 98072-6978 | Yes, the block record, 4000 |
+| Building, no suite | Building entry +9051, suite alternatives +4547 and +7100, even block +6978 | +9051 is the building candidate used in the replay. |
+| STE 101, 108, 109 | One entry for each. +9051 for 101, +4547 for 108 and 109 | All three have listed SST street matches. |
+| STE 105 | One entry, +9051. The candidate list for the building includes STE 102–107 on +9051. | The SST file omits that range. This is the strongest single-result control. |
+| STE 101-A, STE 101A, STE 9999 | 13 candidates on each five-digit lookup, including an echo of the supplied unit at +9051 | A returned string does not independently confirm occupancy, deliverability or a unique suite assignment. |
+| No suite, supplied +9051, +4547 or +6978 | The results included +9051 and the other building and street extensions | Input selection affects the replay. No universal CASS correction is inferred. |
 
-- **Unconfirmed suites:** "Ste 101-A" and "Ste 9999" both come back echoed with the building default 98072-9051, among 13 candidates. USPS does not confirm either suite.
-- **"Ste 105"** is a single exact match inside STE 102–107.
+[USPS address lookup](https://tools.usps.com/zip-code-lookup.htm?byaddress) · [Input-specific notes](../tests/test_inputs_standardized.tsv)
 
-## How each method resolves the address
+## Why the results differ
 
-| Input (USPS-standardized ZIP+4) | DOR lookup | Rules, ZIP+4 left out | Rules, ZIP+4 in the match | Assumptions (= QuickBooks) | DOR sample library |
-|---|---|---|---|---|---|
-| no suite (9051) | 1735 | 4000 (block record) | 1735 (ZIP+4 record 9051) | 4000 | 1735 (file order) |
-| Ste 101 (9051); Ste 108, 109 (4547) | 1735 | 1735 | 1735 | 1735 | 1735 |
-| Ste 101-A, 101A, 105, 9999 (9051) | 1735 | 1735 (ZIP+4 record) | 1735 (ZIP+4 record) | 4000 | 1735 |
-| "Redmond-Woodinville Rd NE" (USPS: not found) | 1735 | 3120 (ZIP5 record) | 3120 (ZIP5 record) | 3120 | 4200 (lowest rate in ZIP) |
+With no suite, omitting the ZIP extension matches the even block at 8.9%. Including the selected +9051 removes that block and falls through to the ZIP+4 record at 10.4%. With STE 105 or STE 101-A retained and +9051 selected, both exact-field variants give 10.4% by ZIP+4. A different postal result, input transformation or source could change that outcome. Intuit's internal trace is unavailable.
 
-**What the table shows:**
-- **Ste 101-A:** every reading that follows the rules gives 10.4%. QuickBooks' 8.9% requires dropping the suite, which the rules don't allow.
-- **No suite:** the rules allow both 8.9% and 10.4%. That is a data defect. TG p. 25 says a query should give the same result with or without the ZIP+4, and that a range covers only addresses sharing its ZIP+4. The block record 14412–14498 carries 6978, but 14450's ZIP+4 is 9051.
-- **The supplied ZIP+4 doesn't matter.** CASS/USPS standardization replaces a mistyped ZIP+4, so inputs typed with 4547 or 6978 standardize to 9051. Before standardization, the replay of the as-typed inputs is in `results/2026Q4/sst_lookup_test_inputs.csv`.
+AddressRates returned 1735 for the winery suite variants. Its XML returned ZIP 98052, with +9051 for STE 101-A and +4547 for STE 108 and 109. Those address queries returned result 4, for which DOR calls for validation. A query for 14412 on the block returned 4000, while 14498 returned 1735. Address lookup responses alone do not trace a city boundary. [Recorded state responses](../results/2026Q4/addressrates_test_inputs.csv) · [DOR interface and status codes](https://dor.wa.gov/wa-sales-tax-rate-lookup-url-interface)
 
-## Observations, not conclusions
-
-- **The lookup ignores the suite.** DOR's lookup returned 1735, ResultCode 4 ("corrected"), for every suite, ZIP+4 and street-name spelling we tried, including a nonexistent "Ste 9999".
-- **It reports a different ZIP.** The lookup's standardized address comes back with `zip="98052"`, while USPS and both DOR files use 98072.
-- **The block may straddle the city limit.** On the same block face, 14412 returned 4000 and 14498 returned 1735. That is consistent with the city limit crossing the 14412-14498 block face, but two lookups don't show where it crosses.
-
-## What would fix it
-
-- **The building:** re-add a 14450 record with no suite on 98072-9051, coded 1735. Alternatively, take 14450 out of the 14412–14498 block record, whose ZIP+4 (6978) isn't the building's.
-- **The suites:** add USPS's STE 102–107 range. If 101-A is a real suite, add it too, or one STE range covering the building.
+DOR can confirm the reporting code for the event location and the treatment of earlier returns. A repair to the file should reconcile both the blank-suite building record and the even block. Simply adding a conflicting single-number row can create another overlap when the ZIP extension is omitted.

@@ -1,0 +1,4 @@
+"observed_utc","street_query","zip_query","location_code","rate","result_code","returned_street","returned_house_low","returned_house_high","returned_zip","returned_plus4"
+"2026-11-20T20:57:12Z","1655 PAYSENO LN SE","98366","1802",".093","2","PAYSENO LN SE","1655","1655","98366","3410"
+"2026-11-20T20:57:13Z","1585 E BADGER RD","98264","3705",".093","0","E BADGER RD","1585","1585","98264",""
+"2026-11-20T20:57:14Z","4801 MERIDIAN AVE N","98103","1726",".1055","0","MERIDIAN AVE N","4801","4801","98103",""

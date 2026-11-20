@@ -1,77 +1,27 @@
-# Method
+# Method and limits
 
-All results are for records effective **2026-11-20** (Q4 2026). Every scan is reproducible from public files with the scripts in `scripts/` (Python 3 standard library only, plus Mono for the DOR sample library).
+## Inputs and record identity
 
-## Data sources
+The working date is November 20, 2026. Boundary and rate rows qualify if the date lies between begin and end, inclusive. The SST boundary archive has 887,013 active address rows, 634,141 active ZIP+4 rows and 715 active ZIP5 rows. Of the address rows, 181,879 have a secondary designator, and every active secondary row is for a single house number. The DOR street download has 1,229,719 rows (even and odd), a ZIP extension and no suite field. Washington's fixed-width MTSA specification includes secondary fields and marks them unpopulated. The MTSA file serves a separate wireless sourcing purpose. [DOR download descriptions](https://dor.wa.gov/taxes-rates/sales-use-tax-rates/downloadable-database) · [MTSA field specification](https://dor.wa.gov/descriptions-mobile-telecommunications-sourcing-act-electronic-database-fields)
 
-| Source | What it is | Suite/unit (secondary) data |
-|---|---|---|
-| **SST boundary file** `WAB2026Q4AUG27.csv` | Washington's Streamlined Sales Tax boundary file, published on streamlinedsalestax.org. Record types: `A` (address), `4` (ZIP+4), `Z` (ZIP5). This is the file certified tax software is built on. | **Yes**: 181,879 of 887,013 effective address records carry APT/STE/UNIT ranges |
-| **DOR address file** `State_26Q4.txt` | DOR's own download: house-number range, side, street, ZIP, ZIP+4, location code | **No** |
-| **DOR ZIP+4 files** `Zip4RatesQ42026-Short.txt` / `-Long.txt` | ZIP+4 → location code | n/a |
-| **DOR wireless (MTSA) file** `StateWRLS_26Q4.txt` | National MTSA format | Fields exist, but DOR's spec lists them as "Populated in DOR's database? **no**" |
-| **DOR AddressRates** | DOR's live lookup ("direct access to the Washington Department of Revenue's address based rate lookup technology platform"), `https://webgis.dor.wa.gov/webapi/AddressRates.aspx` | Accepts a suite in the street line; every suite variant we tried returned the same code |
-| **DOR sample library** WaRateFileLookup 1.0.5 (2011) | C# reference code DOR publishes for its download files | No |
+For DOR location-code comparisons, use the first special-district L code if present, otherwise the last four composite SER digits. This is a WA-specific comparison convention. For combined SST rates, independently join state, county, place and applicable special-district components to effective rows of WAR2026Q4AUG27. Use the general intrastate column with decimal arithmetic. Every boundary row with a mapped code found in the DOR rate table agreed with its SST component sum. For 122 ZIP5 rows the component sum resolves the rate even though the comparison convention finds no DOR location code. [Rate crosswalk with row counts](../results/2026Q4/sst_rate_crosswalk.csv)
 
-## SST matching rules
+## File checks
 
-The rules are quoted with page references in [sst-rules.md](sst-rules.md). In short:
-1. Standardize the address (USPS, CASS or Board-approved software).
-2. Match it to the address records.
-3. If that fails, use the standardized ZIP+4 against the ZIP+4 records.
-4. If that fails, use the ZIP5 record.
-
-Every address field must match exactly, the suite included. The only stated exception is that the ZIP extension may be left out of the address match. The rules give no tie-break, because an address may be valid for only one row.
-
-`scripts/sst_lookup.py` replays each input three ways:
-- **strict, ZIP+4 left out**: permitted by the rules.
-- **strict, ZIP+4 in the match**: also permitted. It gives the same result as the first when the input has no ZIP+4.
-- **assumptions**: not in the rules. An unlisted suite is dropped and the no-suite record used; where no-suite records overlap, the single-address record wins; the ZIP+4 is left out. QuickBooks Online matched this mode on all 31 inputs.
-
-In both strict modes, an unlisted suite gets no address match, and two matching records with different codes are reported as ambiguous.
-
-**Standardized inputs.** `tests/test_inputs_standardized.tsv` holds the 33 test addresses with the ZIP+4 the USPS ZIP Code lookup returned on 2026-11-20, with a note per address. `tests/test_inputs.tsv` holds them as typed into QuickBooks.
-
-**Location codes.** Boundary records are mapped to DOR location codes this way: the `L####` special-district code if present, otherwise the last four digits of the composite SER code. That is this repo's convention, not an SST requirement.
-
-## Conflict scans (`scripts/scan_sst_conflicts.py`)
-
-| ID | Check |
+| Check | Exact scope |
 |---|---|
-| C1 | Two no-suite address records cover the same house number (same ZIP, street, side) with different codes |
-| C2 | Two ZIP+4 records cover the same ZIP+4 with different codes |
-| C3 | Two ZIP5 records cover the same ZIP with different codes |
-| C4 | A building whose listed suites carry a different code than a no-suite record covering its house number. The output is split afterwards (`summarize_api_checks.py`): **C4a**, no no-suite record carries the suites' code, so the result depends on the suite under any reading; **C4b**, the no-suite records overlap (a C1 situation) and the narrowest one agrees with the suites |
-| C5 | Two suite records for one building overlap with different codes |
-| C6 | A ZIP+4 with no `4` record, or whose `4` record code isn't used by any address on it, or isn't the lowest rate (SSUTA §305.A.6(a); TG p. 26; WA certificate 305080) |
-| C7 | A range in DOR's address download whose code differs from the SST records with the same ZIP, ZIP+4, street and overlapping numbers |
-| C8 | Where each ZIP5 record's rate sits among the rates found in that ZIP (lowest, middle, highest). Washington's certificate declares "Lowest rate" for ZIP5 (items 305081, 308041), although SSUTA §305.A.6(b) has allowed highest or blended since 2024 |
+| C1 | Overlapping numeric no-suite ranges in the same postal city, ZIP5, street components and house parity, with different mapped codes. Count segments by parity and count candidate numbers separately. Neither number measures existing homes. |
+| C2 / C3 | Multiple effective rows covering a ZIP+4 or ZIP5 with different mapped codes. Same-code duplication is outside these conflict CSVs. |
+| C4 | Compare listed suite codes to all eligible blank-suite street records at the building. C4a means the two code sets are disjoint. C4b means the narrower street row agrees with the suite. This is a structural comparison, independent of which ZIP+4 a standardizer selects. |
+| C5 | Scan secondary ranges of the same designator in the same building group for different mapped codes. Zero findings is limited to that test. |
+| C6 | Compare ZIP+4 fallback coverage and general rates with the A rows carrying those same nine digits. Report missing fallbacks and above-minimum rows, with multiple different-code fallbacks separately in C2. |
+| C7 | For each DOR row, find SST street rows sharing ZIP, extension, street and at least one house number of compatible parity. Flag the DOR row when none of those SST codes matches. The 7,002 flagged rows each had one SST candidate and included the DOR starting number. No-match rows and partial disagreements that also have a matching candidate are outside this count. DOR has no postal-city or suite field for this join. |
+| C8 | Compare each dated ZIP5 component total with the minimum and maximum among active A and 4 rows in that ZIP. The older C8_zip5_rule.csv shows the subset resolvable by the DOR crosswalk. Use sst_zip5_rates.csv for the full 715. This is an internal comparison with published rows, not a census of rates legally imposed at physical sites. |
 
-**House numbers are candidates, not verified addresses.** Counts give the numbers that fall inside conflicting ranges. Only a geocoded address list or one live lookup per number can tell which of them actually exist.
+Among the 692 C1 segments, 686 have disjoint extension sets for conflicting codes. A matching extension can distinguish them, while a different extension can miss both. The remaining six have a shared extension. All 101 C4a groups have distinct suite versus blank-suite extensions, and their suite extensions have fallback records carrying a suite code. The statewide scan does not know the no-suite postal result at every building. [ZIP+4 cross-check](../results/2026Q4/zip4_resolution.md)
 
-## Live checks against AddressRates (`scripts/check_addressrates.py`)
+## Live and manual evidence
 
-| Check | Coverage | What was queried |
-|---|---|---|
-| C1 | every row | first house number of each segment |
-| C2 | every row | ZIP+4 alone |
-| C4 | every row | building's house number with no suite |
-| C7 | random sample of 200 (seed 7) | first house number of the range |
+C1 uses one number per segment, C4 the building with no suite, and C2 the ZIP+4 alone. C7 uses a seed-7 simple random sample of 200 flagged DOR rows, querying the first number and ZIP5. These queries intentionally omit the extension for street checks. Results show agreement with a code. They cannot identify the service's input database or establish that the API matched the physical site. DOR's result 0 denotes an address match, 1 ZIP+4, 2–4 an update or correction requiring validation and 5 ZIP5 fallback. Compare the returned street, house range, ZIP and status when interpreting an individual answer. [DOR interface](https://dor.wa.gov/wa-sales-tax-rate-lookup-url-interface) · [Verification report](verification-report.md)
 
-The DOR address-file scan (`results/2026Q4/dor_address_file_conflicts.csv`) was checked in full.
-
-## Would the ZIP+4 separate the conflicts? (`scripts/check_zip4_resolution.py`)
-
-This check matters because the rules allow the standardized ZIP+4 in the address match:
-- **C1:** do the overlapping records carry different ZIP+4s? They do in 686 of 692.
-- **C4a:** are the suite ZIP+4s missing from the no-suite records, and do their ZIP+4 records carry the suites' code? Both hold for all 101 buildings.
-
-The file doesn't contain the ZIP+4 USPS assigns to each house number, so the check can't say which record would win. Output: `results/2026Q4/zip4_resolution.md`.
-
-## Tested in QuickBooks Online
-
-31 inputs typed as the ship-to address of an unsaved test invoice, tabbing out to recalculate. The jurisdiction and rate were read from the invoice's "See the math" panel. Ship-from was held constant. A control input (19510 144th Ave NE) confirmed that ship-to drives the calculation.
-
-## DOR address-file scan (`scripts/scan_dor_address_file.py`)
-
-This finds house numbers in DOR's own download that match more than one row with different codes (same ZIP, street, side). `dor_address_file_conflicts_api.csv` has the same 494 segments, with DOR's live answer for each, and records whether the most specific row agrees with it.
+The two replay TSVs contain parsed address components, one with typed extensions and one with the selected postal candidates. The historical “as typed” name means before extension replacement: some punctuation and street tokens are already normalized. Both include the postal city for street matching. If an extension is unavailable, both modes use the same street query. Unmatched suites do not match blank-unit street rows in the exact-field model. The alternative model omits the extension, tries a blank-unit record for an unlisted suite and favors single-number rows in conflicts. The 31 test strings were intentionally selected to exercise boundaries and repeated variants. They are unsuitable for estimating statewide customer impact. [Per-input comparison](../results/2026Q4/test_inputs_comparison.csv)
